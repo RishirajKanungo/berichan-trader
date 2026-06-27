@@ -56,18 +56,65 @@ python -m src.gui
 ```
 or double-run `run_gui.ps1`.
 
-From the app you can:
-- Pick the game, paste or **Load file…** a team (it shows the live parsed count).
-- **Start / Stop** trading at any time — the window stays responsive while it waits.
-- Click the big **Trade Done** button (instead of pressing ENTER) when each trade finishes.
-- Open **⚙ Settings** to edit Twitch username/Client ID/token (with a one-click
-  **Re-authenticate…** button), channel, bot, trade code, and all timing values —
-  no more editing `.env` by hand.
-- Choose the **ready sound** (three soft built-in chimes or your own `.wav`/`.mp3`),
-  set its **volume**, and **Test** it. This replaces the old harsh triple beep.
+The app has a left sidebar with three sections:
+
+- **Team** — the built-in team builder, modeled on Showdown's. **+ Add Pokémon**
+  opens a searchable picker of the **legal Pokémon Champions roster** (with
+  sprites); choosing one opens an editor that constrains abilities and the four
+  move slots to that species' real movepool. Stats use the Champions **Stat Point
+  (SP)** system (66 total, 32 per stat — no IVs) with **two editing modes**: a
+  Showdown-style **slider** view and an interactive **pie/radial** view, both
+  showing live Level-50 stats. You can also **Import from Showdown**. Edit /
+  reorder / remove Pokémon as cards, **Save**/**Load** named teams, and **Export**
+  back to Showdown.
+- **Trade** — pick the game, review the team, **Start / Stop** (the window stays
+  responsive during the wait), and click the big **Trade Done** button when each
+  trade finishes. A configurable **ready sound** (three soft built-in chimes or your
+  own `.wav`/`.mp3`, with volume + test) replaces the old harsh triple beep.
+- **Settings** — Twitch username / Client ID / token (with **Re-authenticate…** and
+  **Check connection**), channel / bot / trade code, all timing values, the ready
+  sound, and **Appearance** (theme).
+
+**First run** launches a short **setup wizard** that walks you through creating a
+Twitch Developer App (Client ID), copying the redirect URL, and authorizing — no
+manual `.env` editing. It's re-runnable from Settings.
+
+**Themes** (Settings → Appearance): **Windows** (native, default), **Material**
+(flat dark), and **Glass** (frosted dark). Switching is live and reliable.
 
 Settings are saved to `%APPDATA%\BerichanCrossTransfer\settings.json` (migrated
-automatically from your existing `.env` on first launch).
+automatically from your existing `.env` on first launch). **Your Twitch token is
+encrypted at rest** using the Windows Data Protection API (DPAPI), tied to your
+Windows account — a copied settings file can't be decrypted by anyone else.
+
+### Build a standalone .exe
+
+To share the app with people who don't have Python:
+
+```
+pip install pyinstaller
+pyinstaller berichan.spec
+```
+
+The executable lands in `dist/`. The build bundles the sound, Pokédex and sprite
+assets and **excludes `.env`**, so no credentials ship inside the binary — each
+user runs the setup wizard and their token stays encrypted on their own machine.
+
+### Pokédex data (teambuilder)
+
+The teambuilder reads a bundled, offline dataset built from Serebii's Pokémon
+Champions Pokédex — `assets/data/champions.json` (roster, types, base stats,
+abilities, movepools) and `assets/sprites/*.png`. These are committed, so the app
+never hits the network. To regenerate after a game update:
+
+```
+python tools/gen_pokedex.py    # rebuild champions.json
+python tools/gen_sprites.py    # rebuild sprites
+```
+
+Stats use the Champions **Stat Point** system and are converted to standard EVs
+(`EV = SP × 8`, capped 252; IVs always perfect) when the set is sent to Berichan,
+so the traded Pokémon matches what you built.
 
 ### Terminal (CLI)
 

@@ -20,6 +20,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from .paths import settings_file
+from .secrets_store import protect, unprotect
 
 load_dotenv()
 
@@ -51,6 +52,9 @@ class Config:
     sound_enabled: bool = True
     sound_path: str = ""
     sound_volume: float = 0.5
+
+    # Appearance: "windows" (native, default), "material", or "glass".
+    theme: str = "windows"
 
     # Fields that live only in .env / runtime, never persisted to settings.json.
     _DERIVED = {"oauth_token", "access_token"}
@@ -90,9 +94,9 @@ class Config:
     # ------------------------------------------------------------------
 
     def to_dict(self) -> dict:
-        """Serializable settings, including the raw token but not derived fields."""
+        """Serializable settings. The token is encrypted at rest (DPAPI)."""
         data = {k: v for k, v in asdict(self).items() if k not in self._DERIVED}
-        data["token"] = self.oauth_token  # persist the IRC form, single source
+        data["token_enc"] = protect(self.oauth_token)  # never plaintext on disk
         return data
 
     @classmethod
@@ -104,7 +108,12 @@ class Config:
                 setattr(cfg, key, value)
         cfg.username = (cfg.username or "").lower()
         cfg.channel = (cfg.channel or "").lower()
-        cfg.set_token(data.get("token", ""))
+        # Prefer the encrypted form; fall back to a legacy plaintext "token" key
+        # written by older builds (it gets re-encrypted on the next save()).
+        if "token_enc" in data:
+            cfg.set_token(unprotect(data["token_enc"]))
+        else:
+            cfg.set_token(data.get("token", ""))
         return cfg
 
     @classmethod

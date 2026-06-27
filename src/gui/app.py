@@ -25,6 +25,7 @@ def main() -> None:
 
     window = MainWindow()
     window.show()
+    window.on_shown()  # apply theme / first-run wizard after the native window exists
 
     with loop:
         loop.run_forever()
