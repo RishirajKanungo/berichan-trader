@@ -19,6 +19,7 @@ function parseRows(rows: Row[]) {
     abilities: [] as [string, number][],
     natures: [] as [string, number][],
     spreads: [] as [Record<string, number>, number][],
+    teammates: [] as string[],
   };
   for (const r of rows) {
     const pct = r.percentage_value ?? 0;
@@ -27,6 +28,8 @@ function parseRows(rows: Row[]) {
       case "held_item": out.items.push([r.name ?? "", pct]); break;
       case "ability": out.abilities.push([r.name ?? "", pct]); break;
       case "stat_alignment": out.natures.push([r.name ?? "", pct]); break;
+      // Teammates are ranked but carry no percentage upstream — keep the order.
+      case "teammate": if (r.name) out.teammates.push(r.name); break;
       case "stat_points":
         out.spreads.push([{
           HP: r.hp_points || 0, Atk: r.attack_points || 0, Def: r.defense_points || 0,

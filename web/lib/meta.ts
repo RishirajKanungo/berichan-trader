@@ -13,9 +13,10 @@ export interface MetaData {
   abilities: [string, number][];
   natures: [string, number][];
   spreads: [Record<StatLabel, number>, number][];
+  teammates: string[];
 }
 
-const EMPTY: MetaData = { available: false, moves: [], items: [], abilities: [], natures: [], spreads: [] };
+const EMPTY: MetaData = { available: false, moves: [], items: [], abilities: [], natures: [], spreads: [], teammates: [] };
 const cache = new Map<string, MetaData>();
 
 export async function getMeta(speciesId: string, format: MetaFormat): Promise<MetaData> {
@@ -26,13 +27,42 @@ export async function getMeta(speciesId: string, format: MetaFormat): Promise<Me
     const r = await fetch(`/api/meta?mon=${encodeURIComponent(speciesId)}&format=${format}`);
     const d = await r.json();
     const m: MetaData = d?.available
-      ? { available: true, moves: d.moves ?? [], items: d.items ?? [], abilities: d.abilities ?? [], natures: d.natures ?? [], spreads: d.spreads ?? [] }
+      ? { available: true, moves: d.moves ?? [], items: d.items ?? [], abilities: d.abilities ?? [], natures: d.natures ?? [], spreads: d.spreads ?? [], teammates: d.teammates ?? [] }
       : EMPTY;
     cache.set(key, m);
     return m;
   } catch {
     return EMPTY;
   }
+}
+
+/** A competitively-tracked Pokémon from the cached roster index. */
+export interface MetaIndexEntry {
+  name: string;        // battle name, e.g. "Alolan Ninetales" (what the usage API expects)
+  slug: string;
+  types: string[];
+  bst: number;
+  stats: number[];     // [HP, Atk, Def, SpA, SpD, Spe]
+  formats: string[];   // formats this Pokémon has data for ("Doubles" / "Singles")
+}
+
+let indexCache: MetaIndexEntry[] | null = null;
+
+export async function getMetaIndex(): Promise<MetaIndexEntry[]> {
+  if (indexCache) return indexCache;
+  try {
+    const r = await fetch("/api/meta/index");
+    const d = await r.json();
+    indexCache = Array.isArray(d?.pokemon) ? (d.pokemon as MetaIndexEntry[]) : [];
+  } catch {
+    indexCache = [];
+  }
+  return indexCache;
+}
+
+/** Remote sprite asset, used as a fallback when we have no bundled local sprite. */
+export function remoteSpriteUrl(name: string): string {
+  return `https://championsbattledata.com/pokemon_champions_assets/pokemon/${encodeURIComponent(name)}.png`;
 }
 
 export interface Recommended {
