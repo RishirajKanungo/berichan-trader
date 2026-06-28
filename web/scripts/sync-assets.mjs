@@ -26,6 +26,7 @@ const items = [
   ["items", "items"],
   ["types", "types"],
   ["categories", "categories"],
+  ["sounds", "sounds"],
 ];
 
 for (const [src, dst] of items) {

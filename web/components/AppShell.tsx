@@ -1,11 +1,19 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Boxes, Repeat } from "lucide-react";
 import { AuthButton } from "./AuthButton";
 import { THEMES, useTheme } from "./theme";
 
+const NAV = [
+  { href: "/", label: "Team Builder", icon: Boxes },
+  { href: "/trade", label: "Trade", icon: Repeat },
+];
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
+  const pathname = usePathname();
 
   return (
     <div className="flex min-h-screen">
@@ -16,31 +24,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="mt-3 space-y-1">
-          <button className="nav-item" data-active="true">
-            <Boxes size={18} /> Team Builder
-          </button>
-          <button className="nav-item" disabled style={{ opacity: 0.5, cursor: "not-allowed" }}>
-            <Repeat size={18} /> Trade
-            <span className="chip ml-auto">soon</span>
-          </button>
+          {NAV.map(({ href, label, icon: Icon }) => (
+            <Link key={href} href={href} className="nav-item" data-active={pathname === href}>
+              <Icon size={18} /> {label}
+            </Link>
+          ))}
         </nav>
 
         <div className="mt-auto space-y-3">
           <AuthButton />
           <div>
-          <div className="muted mb-1 px-2 text-xs">Appearance</div>
-          <div className="grid grid-cols-3 gap-1">
-            {THEMES.map((t) => (
-              <button
-                key={t.key}
-                className="btn"
-                onClick={() => setTheme(t.key)}
-                style={theme === t.key ? { background: "var(--accent)", color: "var(--on-accent)", borderColor: "transparent" } : undefined}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+            <div className="muted mb-1 px-2 text-xs">Appearance</div>
+            <div className="grid grid-cols-3 gap-1">
+              {THEMES.map((t) => (
+                <button
+                  key={t.key}
+                  className="btn"
+                  onClick={() => setTheme(t.key)}
+                  style={theme === t.key ? { background: "var(--accent)", color: "var(--on-accent)", borderColor: "transparent" } : undefined}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </aside>

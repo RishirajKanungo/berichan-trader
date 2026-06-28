@@ -1,0 +1,201 @@
+"use client";
+
+import { useMemo, useRef, useState } from "react";
+import { signIn } from "next-auth/react";
+import Link from "next/link";
+import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/components/auth";
+import { useTeam } from "@/components/team";
+import { GAMES } from "@/lib/games";
+import { playReady } from "@/lib/sound";
+import { displayName } from "@/lib/teamParser";
+import { TradeEngine, type LogLevel } from "@/lib/tradeEngine";
+import { DEFAULT_SETTINGS, loadSettings, saveSettings, type TradeSettings } from "@/lib/tradeSettings";
+
+const LOG_COLOR: Record<LogLevel, string> = {
+  info: "var(--muted)", success: "#2ecc71", warn: "#f1c40f", error: "#e74c3c",
+};
+
+export default function TradePage() {
+  const { authEnabled, signedIn, user, accessToken } = useAuth();
+  const { team } = useTeam();
+  const engineRef = useRef<TradeEngine | null>(null);
+
+  const [settings, setSettings] = useState<TradeSettings>(() => loadSettings());
+  const [running, setRunning] = useState(false);
+  const [status, setStatus] = useState("Idle");
+  const [logLines, setLogLines] = useState<{ msg: string; level: LogLevel }[]>([]);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [readyForTrade, setReadyForTrade] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const update = (patch: Partial<TradeSettings>) => {
+    setSettings((s) => { const next = { ...s, ...patch }; saveSettings(next); return next; });
+  };
+  const log = (msg: string, level: LogLevel = "info") => setLogLines((p) => [...p, { msg, level }]);
+
+  const canTrade = useMemo(
+    () => authEnabled && signedIn && !!accessToken && !!user?.login,
+    [authEnabled, signedIn, accessToken, user],
+  );
+
+  const start = () => {
+    if (!settings.tradeCode.trim()) { setStatus("Enter your trade code first."); return; }
+    if (!team.length) { setStatus("No team — build or load one first."); return; }
+    if (!accessToken || !user?.login) { setStatus("Sign in with Twitch first."); return; }
+
+    const engine = new TradeEngine({
+      log,
+      status: setStatus,
+      pokemonStart: (i, total, mon) => { setProgress({ done: i - 1, total }); log(`[${i}/${total}] ${displayName(mon)}`); },
+      queueJoined: (id, pos) => log(`Queue joined — ID ${id}, position ${pos}`, "success"),
+      tradeReady: (name, code) => { setReadyForTrade(true); playReady(settings.sound); log(`TRADE READY: ${name} — code ${code} on your Switch, then click “Trade Done”.`, "warn"); },
+      pokemonDone: (i, total) => { setProgress({ done: i, total }); setReadyForTrade(false); log("Trade confirmed.", "success"); },
+      cooldown: (rem) => { if (rem > 0) setStatus(`Cooldown: ${Math.round(rem)}s…`); },
+      complete: (total) => { log(`All ${total} Pokémon submitted!`, "success"); setStatus("Done 🎉"); },
+    });
+    engineRef.current = engine;
+    setRunning(true);
+    setReadyForTrade(false);
+    setLogLines([]);
+    log(`Starting ${team.length} Pokémon → #${settings.channel} (${settings.gameCommand})`);
+    engine
+      .run(team, {
+        token: accessToken,
+        login: user.login,
+        channel: settings.channel,
+        botUsername: settings.botUsername,
+        tradeCode: settings.tradeCode,
+        gameCommand: settings.gameCommand,
+        lineDelay: settings.lineDelay,
+        whisperDelay: settings.whisperDelay,
+        queueTimeout: settings.queueTimeout,
+        tradeTimeout: settings.tradeTimeout,
+        cooldown: settings.cooldown,
+      })
+      .catch((e) => { log(`[error] ${e instanceof Error ? e.message : e}`, "error"); setStatus("Error."); })
+      .finally(() => { setRunning(false); setReadyForTrade(false); });
+  };
+
+  const stop = () => { engineRef.current?.stop(); setRunning(false); };
+  const tradeDone = () => { engineRef.current?.confirmDone(); setReadyForTrade(false); };
+
+  return (
+    <AppShell>
+      <div className="mx-auto max-w-3xl">
+        <h1 className="mb-1 text-2xl font-bold">Trade</h1>
+        <p className="muted mb-4 text-sm">Auto-post your team to Berichan&apos;s chat and trade into your game.</p>
+
+        {!canTrade ? (
+          <div className="card p-8 text-center">
+            {!authEnabled ? (
+              <p className="muted">Sign-in isn&apos;t configured on this deployment yet.</p>
+            ) : (
+              <>
+                <p className="mb-3">Sign in with Twitch to trade (this grants chat + whisper permissions).</p>
+                <button className="btn btn-primary" onClick={() => signIn("twitch")}>Sign in with Twitch</button>
+                <p className="muted mt-3 text-xs">Already signed in? You may need to sign out and back in once to grant the new trade permissions.</p>
+              </>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Settings */}
+            <div className="card mb-4 space-y-3 p-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Game">
+                  <select className="input" value={settings.gameCommand} onChange={(e) => update({ gameCommand: e.target.value })} disabled={running}>
+                    {GAMES.map((g) => <option key={g.command} value={g.command}>{g.label} ({g.command})</option>)}
+                  </select>
+                </Field>
+                <Field label="Trade code (your Switch Link Trade code)">
+                  <input className="input" value={settings.tradeCode} onChange={(e) => update({ tradeCode: e.target.value })} placeholder="e.g. 12345678" disabled={running} />
+                </Field>
+                <Field label="Channel"><input className="input" value={settings.channel} onChange={(e) => update({ channel: e.target.value })} disabled={running} /></Field>
+                <Field label="Bot username"><input className="input" value={settings.botUsername} onChange={(e) => update({ botUsername: e.target.value })} disabled={running} /></Field>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={settings.sound} onChange={(e) => update({ sound: e.target.checked })} style={{ accentColor: "var(--accent)" }} /> Play a sound when a trade is ready
+              </label>
+
+              <button className="muted text-xs underline" onClick={() => setShowAdvanced((v) => !v)}>
+                {showAdvanced ? "Hide" : "Show"} timing settings
+              </button>
+              {showAdvanced && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <Field label="Line delay (s)"><input type="number" step="0.1" className="input" value={settings.lineDelay} onChange={(e) => update({ lineDelay: Number(e.target.value) })} disabled={running} /></Field>
+                  <Field label="Whisper delay (s)"><input type="number" step="0.1" className="input" value={settings.whisperDelay} onChange={(e) => update({ whisperDelay: Number(e.target.value) })} disabled={running} /></Field>
+                  <Field label="Cooldown (s)"><input type="number" className="input" value={settings.cooldown} onChange={(e) => update({ cooldown: Number(e.target.value) })} disabled={running} /></Field>
+                  <Field label="Trade timeout (s)"><input type="number" className="input" value={settings.tradeTimeout} onChange={(e) => update({ tradeTimeout: Number(e.target.value) })} disabled={running} /></Field>
+                </div>
+              )}
+            </div>
+
+            {/* Team summary */}
+            <div className="card mb-4 p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="font-semibold">Team to trade ({team.length})</span>
+                <Link href="/" className="muted text-xs underline">Edit on the Team Builder →</Link>
+              </div>
+              {team.length === 0 ? (
+                <p className="muted text-sm">No team loaded. Go to the Team Builder to build or load one.</p>
+              ) : (
+                <ol className="muted list-decimal pl-5 text-sm">
+                  {team.map((m, i) => <li key={i}>{displayName(m)}</li>)}
+                </ol>
+              )}
+            </div>
+
+            {/* Controls */}
+            <div className="mb-3 flex items-center gap-2">
+              {!running ? (
+                <button className="btn btn-primary" onClick={start} disabled={!team.length || !settings.tradeCode.trim()}>▶ Start Trading</button>
+              ) : (
+                <button className="btn" onClick={stop}>■ Stop</button>
+              )}
+              <span className="muted text-sm">{status}</span>
+            </div>
+
+            {progress.total > 0 && (
+              <div className="mb-3 h-3 w-full overflow-hidden rounded-full" style={{ background: "var(--panel)" }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${(progress.done / progress.total) * 100}%`, background: "var(--accent)" }} />
+              </div>
+            )}
+
+            <button
+              className="mb-3 w-full rounded-lg py-3 text-base font-bold"
+              style={{ background: readyForTrade ? "#27ae60" : "var(--panel)", color: readyForTrade ? "#fff" : "var(--muted)", cursor: readyForTrade ? "pointer" : "not-allowed" }}
+              onClick={tradeDone}
+              disabled={!readyForTrade}
+            >
+              ✓ Trade Done — next Pokémon
+            </button>
+
+            {running && (
+              <p className="muted mb-3 text-center text-xs">⚠ Keep this tab open and visible while trading.</p>
+            )}
+
+            {/* Log */}
+            <div className="card max-h-72 overflow-y-auto p-3 font-mono text-xs">
+              {logLines.length === 0 ? (
+                <span className="muted">Log output appears here…</span>
+              ) : (
+                logLines.map((l, i) => <div key={i} style={{ color: LOG_COLOR[l.level] }}>{l.msg}</div>)
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </AppShell>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="muted mb-1 block text-xs font-medium">{label}</label>
+      {children}
+    </div>
+  );
+}

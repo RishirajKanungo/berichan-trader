@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Download, FolderOpen, Plus, Save, Upload } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/auth";
+import { useTeam } from "@/components/team";
 import { PokemonCard } from "@/components/PokemonCard";
 import { PokemonEditor } from "@/components/PokemonEditor";
 import { SpeciesPicker } from "@/components/SpeciesPicker";
@@ -16,7 +17,7 @@ import type { Pokemon, Species } from "@/lib/types";
 export default function Page() {
   const { authEnabled, signedIn } = useAuth();
   const cloud = authEnabled && signedIn;
-  const [team, setTeam] = useState<Pokemon[]>([]);
+  const { team, setTeam } = useTeam();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editor, setEditor] = useState<{ open: boolean; mon: Pokemon | null; species: Species | null; index: number }>(
     { open: false, mon: null, species: null, index: -1 },
