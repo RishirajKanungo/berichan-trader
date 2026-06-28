@@ -16,6 +16,7 @@ import type { Pokemon, Species } from "@/lib/types";
 import { Combobox } from "./ui/Combobox";
 import { Modal } from "./ui/Modal";
 import { StatSpread } from "./StatSpread";
+import { EvOptimizer } from "./EvOptimizer";
 
 const TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy","Stellar"];
 
@@ -259,6 +260,22 @@ export function PokemonEditor({
           })}
         </div>
       </div>
+
+      {/* Benchmark optimizer — solve minimum SP to survive a threat / score a KO. */}
+      {species && (
+        <div className="mt-5">
+          <EvOptimizer
+            species={species}
+            level={level}
+            nature={nature}
+            item={item}
+            ability={ability}
+            sp={sp}
+            moves={moves}
+            onApply={(patch) => setSp((prev) => ({ ...prev, ...patch }))}
+          />
+        </div>
+      )}
     </Modal>
   );
 }
