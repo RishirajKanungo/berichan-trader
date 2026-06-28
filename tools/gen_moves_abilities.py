@@ -62,15 +62,26 @@ def main() -> None:
     sd_moves = _get(MOVES_URL)
     abil_desc = _ability_descs()
 
+    # Human-friendly move flags worth surfacing in the UI (e.g. "Sound" moves
+    # bypass Substitute; "Contact" triggers Rough Skin; etc.).
+    flag_labels = {
+        "contact": "Contact", "sound": "Sound", "punch": "Punch", "bite": "Bite",
+        "bullet": "Bullet", "pulse": "Pulse", "powder": "Powder", "dance": "Dance",
+        "slicing": "Slicing", "wind": "Wind", "heal": "Heal", "bypasssub": "Bypasses Sub",
+        "recharge": "Recharge", "charge": "Charge",
+    }
+
     moves = []
     for name in sorted(move_names):
         m = sd_moves.get(_to_id(name))
         if not m:
             moves.append({"name": name, "type": "", "category": "",
                           "power": 0, "accuracy": "—", "pp": 0,
-                          "priority": 0, "desc": ""})
+                          "priority": 0, "desc": "", "longDesc": "", "flags": []})
             continue
         acc = m.get("accuracy", True)
+        mflags = m.get("flags", {}) or {}
+        flags = [label for key, label in flag_labels.items() if mflags.get(key)]
         moves.append({
             "name": m.get("name", name),
             "type": m.get("type", ""),
@@ -80,6 +91,8 @@ def main() -> None:
             "pp": m.get("pp", 0),
             "priority": m.get("priority", 0),
             "desc": m.get("shortDesc") or m.get("desc", ""),
+            "longDesc": m.get("desc", ""),
+            "flags": flags,
         })
 
     abilities = []

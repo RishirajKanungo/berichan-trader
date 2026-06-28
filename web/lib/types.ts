@@ -44,6 +44,8 @@ export interface MoveData {
   pp: number;
   priority: number;
   desc: string;
+  longDesc?: string;
+  flags?: string[];
 }
 
 export interface AbilityData {

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  abilityDesc, allItems, describeItem, getMove, itemIconUrl, moveSummary, moveTooltip,
+  abilityDesc, allItems, describeItem, getMove, itemIconUrl, moveSummary,
 } from "@/lib/data";
 import { categoryIconUrl, spriteUrl, typeIconUrl } from "@/lib/assets";
 import {
@@ -71,9 +71,12 @@ export function PokemonEditor({
       open={open}
       onClose={onClose}
       title={speciesName ? `Edit ${speciesName}` : "Add Pokémon"}
-      className="max-w-xl"
+      className="max-w-4xl"
       footer={
         <>
+          <span className="mr-auto text-xs" style={{ color: over ? "#e74c3c" : "var(--muted)" }}>
+            {charLen} / {TWITCH_MAX_CHAT_LENGTH} chars
+          </span>
           <button className="btn" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={() => { if (speciesName) { onSave(build()); onClose(); } }}>
             Save
@@ -82,102 +85,110 @@ export function PokemonEditor({
       }
     >
       {species && (
-        <div className="card mb-4 flex items-center gap-3 p-3">
+        <div className="card mb-4 flex items-center gap-4 p-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={spriteUrl(species.id)} alt={species.name} width={72} height={72} />
+          <img src={spriteUrl(species.id)} alt={species.name} width={80} height={80} />
           <div>
-            <div className="text-lg font-bold">{species.name}</div>
-            <div className="mt-1 flex gap-1">
+            <div className="text-xl font-bold">{species.name}</div>
+            <div className="mt-1 flex gap-1.5">
               {species.types.map((t) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img key={t} src={typeIconUrl(t)} alt={t} className="h-4" />
               ))}
             </div>
-            <div className="muted mt-1 text-[11px]">
-              {STAT_KEYS.map((k) => `${STAT_LABELS[k]} ${species.baseStats[k]}`).join("  ")}
-              {"  ·  BST "}{STAT_KEYS.reduce((s, k) => s + (species.baseStats[k] || 0), 0)}
+            <div className="muted mt-1.5 text-xs">
+              {STAT_KEYS.map((k) => `${STAT_LABELS[k]} ${species.baseStats[k]}`).join("   ")}
+              {"   ·   BST "}{STAT_KEYS.reduce((s, k) => s + (species.baseStats[k] || 0), 0)}
             </div>
           </div>
         </div>
       )}
 
-      <div className="space-y-3">
-        <Field label="Nickname"><input className="input" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder={speciesName} /></Field>
+      {/* Two columns on wide screens: details on the left, stats on the right. */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-3">
+          <Field label="Nickname"><input className="input" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder={speciesName} /></Field>
 
-        <Field label="Ability">
-          <Combobox value={ability} onChange={setAbility} options={species?.abilities ?? []} placeholder="Ability" />
-          {abilityDesc(ability) && <p className="muted mt-1 text-xs">{abilityDesc(ability)}</p>}
-        </Field>
+          <Field label="Ability">
+            <Combobox value={ability} onChange={setAbility} options={species?.abilities ?? []} placeholder="Ability" />
+            {abilityDesc(ability) && <p className="muted mt-1 text-xs">{abilityDesc(ability)}</p>}
+          </Field>
 
-        <Field label="Item">
-          <div className="flex items-center gap-2">
-            {itemIcon && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={itemIcon} alt={item} width={28} height={28} className="shrink-0" />
-            )}
-            <div className="flex-1"><Combobox value={item} onChange={setItem} options={itemNames} placeholder="Held item" /></div>
+          <Field label="Item">
+            <div className="flex items-center gap-2">
+              {itemIcon && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={itemIcon} alt={item} width={28} height={28} className="shrink-0" />
+              )}
+              <div className="flex-1"><Combobox value={item} onChange={setItem} options={itemNames} placeholder="Held item" /></div>
+            </div>
+            {describeItem(item) && <p className="muted mt-1 text-xs">{describeItem(item)}</p>}
+          </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Gender">
+              <select className="input" value={gender} onChange={(e) => setGender(e.target.value)}>
+                <option>—</option><option>M</option><option>F</option>
+              </select>
+            </Field>
+            <Field label="Level">
+              <input type="number" min={1} max={100} className="input" value={level} onChange={(e) => setLevel(Number(e.target.value) || 50)} />
+            </Field>
+            <Field label="Tera Type"><Combobox value={tera} onChange={setTera} options={TYPES} placeholder="Tera" /></Field>
+            <Field label="Nature">
+              <select className="input" value={nature} onChange={(e) => setNature(e.target.value)}>
+                {NATURE_NAMES.map((n) => <option key={n || "neutral"} value={n}>{n || "—"}</option>)}
+              </select>
+            </Field>
           </div>
-          {describeItem(item) && <p className="muted mt-1 text-xs">{describeItem(item)}</p>}
-        </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Gender">
-            <select className="input" value={gender} onChange={(e) => setGender(e.target.value)}>
-              <option>—</option><option>M</option><option>F</option>
-            </select>
-          </Field>
-          <Field label="Level">
-            <input type="number" min={1} max={100} className="input" value={level} onChange={(e) => setLevel(Number(e.target.value) || 50)} />
-          </Field>
-          <Field label="Tera Type"><Combobox value={tera} onChange={setTera} options={TYPES} placeholder="Tera" /></Field>
-          <Field label="Nature">
-            <select className="input" value={nature} onChange={(e) => setNature(e.target.value)}>
-              {NATURE_NAMES.map((n) => <option key={n || "neutral"} value={n}>{n || "—"}</option>)}
-            </select>
-          </Field>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={shiny} onChange={(e) => setShiny(e.target.checked)} style={{ accentColor: "var(--accent)" }} /> Shiny
+          </label>
         </div>
 
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={shiny} onChange={(e) => setShiny(e.target.checked)} style={{ accentColor: "var(--accent)" }} /> Shiny
-        </label>
-
         <div>
-          <div className="mb-1 text-sm font-semibold">Stats — Stat Points (32 max each, 66 total)</div>
-          <div className="card p-3">
+          <div className="mb-1.5 text-sm font-semibold">Stats — Stat Points (32 max each, 66 total)</div>
+          <div className="card p-4">
             <StatSpread baseStats={species?.baseStats ?? ({} as Species["baseStats"])} level={level} nature={nature} value={sp} onChange={setSp} />
           </div>
         </div>
+      </div>
 
-        <div>
-          <div className="mb-1 text-sm font-semibold">Moves</div>
-          <div className="space-y-2">
-            {moves.map((mv, i) => {
-              const m = getMove(mv);
-              return (
-                <div key={i}>
-                  <Combobox
-                    value={mv}
-                    onChange={(v) => setMoves((prev) => prev.map((x, j) => (j === i ? v : x)))}
-                    options={species?.moves ?? []}
-                    placeholder={`Move ${i + 1}`}
-                  />
-                  {m && (
-                    <div className="mt-0.5 flex items-center gap-1.5" title={moveTooltip(mv)}>
+      {/* Moves — full width, two per row on wide screens, with descriptions + flags. */}
+      <div className="mt-5">
+        <div className="mb-2 text-sm font-semibold">Moves</div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {moves.map((mv, i) => {
+            const m = getMove(mv);
+            return (
+              <div key={i} className="card p-3">
+                <Combobox
+                  value={mv}
+                  onChange={(v) => setMoves((prev) => prev.map((x, j) => (j === i ? v : x)))}
+                  options={species?.moves ?? []}
+                  placeholder={`Move ${i + 1}`}
+                />
+                {m && (
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex items-center gap-1.5">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={typeIconUrl(m.type)} alt={m.type} className="h-3" />
+                      <img src={typeIconUrl(m.type)} alt={m.type} className="h-3.5" />
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={categoryIconUrl(m.category)} alt={m.category} className="h-3" />
-                      <span className="muted text-[10px]">{moveSummary(mv)}</span>
+                      <img src={categoryIconUrl(m.category)} alt={m.category} className="h-3.5" />
+                      <span className="muted text-[11px]">{moveSummary(mv)} · {m.pp} PP</span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="text-right text-xs" style={{ color: over ? "#e74c3c" : "var(--muted)" }}>
-          {charLen} / {TWITCH_MAX_CHAT_LENGTH} chars
+                    {m.desc && <p className="text-xs leading-snug">{m.desc}</p>}
+                    {m.flags && m.flags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {m.flags.map((f) => <span key={f} className="chip">{f}</span>)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </Modal>
