@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { loadData } from "@/lib/data";
 import { AuthProvider } from "./auth";
+import { ScaleProvider } from "./scale";
 import { TeamProvider } from "./team";
 import { ThemeProvider } from "./theme";
 
@@ -16,6 +17,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider>
+      <ScaleProvider>
       <AuthProvider>
         <TeamProvider>
           {ready ? (
@@ -27,6 +29,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
           )}
         </TeamProvider>
       </AuthProvider>
+      </ScaleProvider>
     </ThemeProvider>
   );
 }

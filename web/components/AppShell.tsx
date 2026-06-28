@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Boxes, Calculator, Gauge, Repeat, TrendingUp } from "lucide-react";
 import { AuthButton } from "./AuthButton";
+import { SCALES, useScale } from "./scale";
 import { THEMES, useTheme } from "./theme";
 
 const NAV = [
@@ -16,6 +17,7 @@ const NAV = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
+  const { scale, setScale } = useScale();
   const pathname = usePathname();
 
   return (
@@ -47,6 +49,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   style={theme === t.key ? { background: "var(--accent)", color: "var(--on-accent)", borderColor: "transparent" } : undefined}
                 >
                   {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="muted mb-1 px-2 text-xs">Display size</div>
+            <div className="grid grid-cols-4 gap-1">
+              {SCALES.map((s) => (
+                <button
+                  key={s.key}
+                  className="btn px-1"
+                  title={`Scale the whole app to ${s.label} — great for 4K / large displays`}
+                  onClick={() => setScale(s.key)}
+                  style={scale === s.key ? { background: "var(--accent)", color: "var(--on-accent)", borderColor: "transparent" } : undefined}
+                >
+                  {s.label}
                 </button>
               ))}
             </div>

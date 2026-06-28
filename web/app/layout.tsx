@@ -8,8 +8,8 @@ export const metadata: Metadata = {
     "Build Pokémon Champions teams in your browser: full legal roster, items, moves, abilities, and the Stat-Point editor.",
 };
 
-// Set the saved theme before paint to avoid a flash of the wrong theme.
-const themeInit = `(function(){try{var t=localStorage.getItem('berichan.theme')||'material';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','material');}})();`;
+// Set the saved theme + UI scale before paint to avoid a flash of the wrong one.
+const themeInit = `(function(){try{var t=localStorage.getItem('berichan.theme')||'material';document.documentElement.setAttribute('data-theme',t);var s=localStorage.getItem('berichan.uiScale');if(s&&s!=='1')document.documentElement.style.zoom=s;}catch(e){document.documentElement.setAttribute('data-theme','material');}})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
