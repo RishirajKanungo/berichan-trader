@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Download, FolderOpen, Plus, Save, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Download, FolderOpen, Plus, Save, Share2, Upload } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/auth";
 import { useTeam } from "@/components/team";
@@ -14,6 +14,7 @@ import { Modal } from "@/components/ui/Modal";
 import { getSpecies } from "@/lib/data";
 import { normalizeChampionsImport, parseTeam, teamToShowdown } from "@/lib/teamParser";
 import { deleteTeam, listTeams, loadTeam, saveTeam } from "@/lib/teams";
+import { appShareLink, exportToPokepaste, importFromPokepaste } from "@/lib/share";
 import type { Pokemon, Species } from "@/lib/types";
 
 export default function Page() {
@@ -26,12 +27,29 @@ export default function Page() {
   );
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
+  const [pasteLink, setPasteLink] = useState("");
   const [loadOpen, setLoadOpen] = useState(false);
   const [savedNames, setSavedNames] = useState<string[]>([]);
   const [toast, setToast] = useState("");
   const [analysisTab, setAnalysisTab] = useState<"coverage" | "matchups">("coverage");
+  const [sharing, setSharing] = useState(false);
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
+
+  // Load a team straight from a shared link: /?paste=<pokepaste id>.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("paste");
+    if (!id) return;
+    importFromPokepaste(id)
+      .then(({ paste }) => {
+        const parsed = normalizeChampionsImport(parseTeam(paste));
+        if (parsed.length) { setTeam(parsed); flash(`Loaded ${parsed.length} Pokémon from the shared link.`); }
+      })
+      .catch(() => flash("Couldn't load the shared team."));
+    // Clear the param so a refresh doesn't reload over the user's edits.
+    window.history.replaceState(null, "", window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openAdd = (species: Species) => setEditor({ open: true, mon: null, species, index: -1 });
   const openEdit = (i: number) =>
@@ -60,10 +78,40 @@ export default function Page() {
     flash(`Imported ${parsed.length} Pokémon.`);
   };
 
+  const doImportLink = async () => {
+    if (!pasteLink.trim()) return;
+    try {
+      const { paste } = await importFromPokepaste(pasteLink.trim());
+      const parsed = normalizeChampionsImport(parseTeam(paste));
+      if (!parsed.length) { flash("That Poképaste had no Pokémon."); return; }
+      setTeam(parsed);
+      setPasteLink("");
+      setImportOpen(false);
+      flash(`Imported ${parsed.length} Pokémon from Poképaste.`);
+    } catch (e) {
+      flash(e instanceof Error ? e.message : "Import failed.");
+    }
+  };
+
   const doExport = async () => {
     if (!team.length) return;
     await navigator.clipboard.writeText(teamToShowdown(team));
     flash("Showdown export copied to clipboard.");
+  };
+
+  const doShare = async () => {
+    if (!team.length) { flash("Add some Pokémon first."); return; }
+    setSharing(true);
+    try {
+      const { url } = await exportToPokepaste(teamToShowdown(team), "Berichan team");
+      const id = url.split("/").pop() || "";
+      await navigator.clipboard.writeText(appShareLink(id));
+      flash("Shareable link copied — opens this team in the builder.");
+    } catch (e) {
+      flash(e instanceof Error ? e.message : "Share failed.");
+    } finally {
+      setSharing(false);
+    }
   };
 
   const doSave = async () => {
@@ -98,6 +146,7 @@ export default function Page() {
           <div className="ml-auto flex flex-wrap gap-2">
             <button className="btn" onClick={() => setImportOpen(true)}><Upload size={16} /> Import</button>
             <button className="btn" onClick={doExport} disabled={!team.length}><Download size={16} /> Export</button>
+            <button className="btn" onClick={doShare} disabled={!team.length || sharing}><Share2 size={16} /> {sharing ? "Sharing…" : "Share"}</button>
             <button className="btn" onClick={doSave} disabled={!team.length}><Save size={16} /> Save</button>
             <button className="btn" onClick={openLoad}><FolderOpen size={16} /> Load</button>
             <button className="btn btn-primary" onClick={() => setPickerOpen(true)}><Plus size={16} /> Add Pokémon</button>
@@ -163,8 +212,15 @@ export default function Page() {
         title="Import from Showdown"
         footer={<><button className="btn" onClick={() => setImportOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={doImport}>Import</button></>}
       >
-        <p className="muted mb-2 text-sm">Paste a Showdown team export. This replaces the current team.</p>
-        <textarea className="input h-56 font-mono text-xs" value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Paste here…" />
+        <div className="mb-3">
+          <p className="muted mb-1.5 text-sm">Import from a Poképaste link:</p>
+          <div className="flex gap-2">
+            <input className="input flex-1" value={pasteLink} onChange={(e) => setPasteLink(e.target.value)} placeholder="https://pokepast.es/…" onKeyDown={(e) => e.key === "Enter" && doImportLink()} />
+            <button className="btn" onClick={doImportLink} disabled={!pasteLink.trim()}>Load</button>
+          </div>
+        </div>
+        <p className="muted mb-2 text-sm">…or paste a Showdown team export. This replaces the current team.</p>
+        <textarea className="input h-48 font-mono text-xs" value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Paste here…" />
       </Modal>
 
       <Modal open={loadOpen} onClose={() => setLoadOpen(false)} title="Load a saved team">
