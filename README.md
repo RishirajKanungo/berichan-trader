@@ -29,6 +29,25 @@ mainline games) with almost no manual work.
 Nothing is installed on your system. The app only saves your settings and teams to
 `%APPDATA%\BerichanCrossTransfer\`. To uninstall, just delete the `.exe`.
 
+### If Windows blocks the .exe (Smart App Control)
+
+Some Windows 11 PCs have **Smart App Control** turned on. Unlike the SmartScreen
+warning above, it **blocks unsigned apps with no “Run anyway” option** (you may see
+*“An Application Control policy has blocked this file.”*). If that happens, the
+easiest fix is to **run from source with one click** — no `.exe` needed:
+
+1. On this repo's main page, click **Code → Download ZIP**, then extract it.
+2. Double-click **`Run-Berichan-Trader.bat`** in the extracted folder.
+   - The first run installs everything automatically (needs
+     [Python](https://www.python.org/downloads/) — tick *“Add Python to PATH”* if
+     prompted; the launcher opens the download page for you if it's missing). This
+     takes a few minutes once.
+   - After that, double-clicking the launcher opens the app right away.
+
+(Advanced alternative: you *can* disable Smart App Control in Windows Security, but
+that switch is **permanent** — you can't turn it back on without resetting Windows —
+so running from source is the safer choice.)
+
 ---
 
 ## First-time setup (built-in wizard)

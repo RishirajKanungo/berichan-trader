@@ -100,3 +100,12 @@ jobs:
             Windows SmartScreen may show "Windows protected your PC" because the app
             is unsigned. Click **More info → Run anyway**. This is normal for
             unsigned open-source apps.
+
+            ### If Windows blocks it (Smart App Control)
+            Some Windows 11 PCs have **Smart App Control**, which blocks unsigned apps
+            with no "Run anyway" option. If you hit that, run it from source instead —
+            no `.exe` needed:
+            1. Download the source: **Code → Download ZIP** on the repo, then extract.
+            2. Double-click **`Run-Berichan-Trader.bat`**. The first run installs
+               everything automatically (needs Python; the launcher opens the download
+               page if it's missing). After that it opens right away.
