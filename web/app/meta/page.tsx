@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Boxes, Search, TrendingUp } from "lucide-react";
+import { Boxes, Link2, Search, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useTeam } from "@/components/team";
 import { MetaDetail } from "@/components/MetaDetail";
@@ -11,6 +11,7 @@ import {
   getMetaIndex, getUsageRanks, normalizeMonName,
   type MetaFormat, type MetaIndexEntry,
 } from "@/lib/meta";
+import { loadRoleData, ROLES, type RoleId, type RoleInfo } from "@/lib/roles";
 import { typeColor, typeGradient } from "@/lib/typeColors";
 import type { Pokemon } from "@/lib/types";
 
@@ -39,6 +40,9 @@ export default function MetaPage() {
   const [sort, setSort] = useState<SortKey>("usage");
   const [selected, setSelected] = useState<MetaIndexEntry | null>(null);
   const [toast, setToast] = useState("");
+  const [view, setView] = useState<"pokemon" | "cores">("pokemon");
+  const [roleFilter, setRoleFilter] = useState<RoleId | "">("");
+  const [roleData, setRoleData] = useState<{ format: MetaFormat; map: Map<string, RoleInfo> } | null>(null);
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
@@ -59,12 +63,52 @@ export default function MetaPage() {
     return m;
   }, [all]);
 
+  // Base roster sorted by usage (most-used first) — drives role analysis + cores.
+  const rankedByUsage = useMemo(() => {
+    if (!all) return [];
+    return all
+      .filter((e) => !e.form && e.formats.includes(format))
+      .map((e) => ({ e, rank: ranks?.get(normalizeMonName(e.name)) ?? Infinity }))
+      .sort((a, b) => a.rank - b.rank)
+      .map((x) => x.e);
+  }, [all, format, ranks]);
+
+  // Lazily analyse the top usage Pokémon's roles/teammates when needed.
+  useEffect(() => {
+    if (view !== "cores" && !roleFilter) return;
+    if (!rankedByUsage.length) return;
+    let active = true;
+    loadRoleData(rankedByUsage, format, 60).then((map) => { if (active) setRoleData({ format, map }); });
+    return () => { active = false; };
+  }, [view, roleFilter, rankedByUsage, format]);
+
+  const roles = roleData && roleData.format === format ? roleData.map : null;
+  const roleLoading = (view === "cores" || !!roleFilter) && !roles;
+
+  const cores = useMemo(() => {
+    if (!roles) return [];
+    const seen = new Set<string>();
+    const out: { a: MetaIndexEntry; b: MetaIndexEntry }[] = [];
+    for (const e of rankedByUsage.slice(0, 30)) {
+      const partnerName = roles.get(e.name)?.teammates[0];
+      const b = partnerName ? byName.get(partnerName.toLowerCase()) : undefined;
+      if (!b) continue;
+      const key = [e.name, b.name].sort().join("|");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ a: e, b });
+      if (out.length >= 24) break;
+    }
+    return out;
+  }, [roles, rankedByUsage, byName]);
+
   const shown = useMemo<Ranked[]>(() => {
     if (!all) return [];
     const q = query.trim().toLowerCase();
     const list: Ranked[] = all
       // Megas have no separate usage data upstream — the Meta tab shows base forms.
       .filter((e) => !e.form && e.formats.includes(format) && (!q || e.name.toLowerCase().includes(q)))
+      .filter((e) => !roleFilter || (roles?.get(e.name)?.roles.has(roleFilter) ?? false))
       .map((e) => ({ ...e, rank: ranks?.get(normalizeMonName(e.name)) ?? null }));
 
     const def = SORTS.find((s) => s.key === sort)!;
@@ -82,7 +126,7 @@ export default function MetaPage() {
       return b.bst - a.bst;
     });
     return list;
-  }, [all, format, query, sort, ranks, ranksLoaded, usageAvailable]);
+  }, [all, format, query, sort, ranks, ranksLoaded, usageAvailable, roleFilter, roles]);
 
   const usageUnavailable = ranksLoaded && !usageAvailable;
 
@@ -138,6 +182,10 @@ export default function MetaPage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
+          <select className="input w-auto" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as RoleId | "")}>
+            <option value="">Role: any</option>
+            {ROLES.map((r) => <option key={r.id} value={r.id}>Role: {r.label}</option>)}
+          </select>
           <select className="input w-auto" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
             {SORTS.map((s) => (
               <option key={s.key} value={s.key} disabled={s.key === "usage" && usageUnavailable}>
@@ -145,17 +193,49 @@ export default function MetaPage() {
               </option>
             ))}
           </select>
+          <div className="flex gap-1">
+            {([["pokemon", "Pokémon"], ["cores", "Cores"]] as const).map(([k, label]) => (
+              <button key={k} className="btn" onClick={() => setView(k)}
+                style={view === k ? { background: "var(--accent)", color: "var(--on-accent)", borderColor: "transparent" } : undefined}>
+                {k === "cores" ? <Link2 size={15} /> : null} {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {all === null ? (
           <div className="card muted p-10 text-center">Loading the meta…</div>
+        ) : view === "cores" ? (
+          roleLoading ? (
+            <div className="card muted p-10 text-center">Finding the most-used cores…</div>
+          ) : cores.length === 0 ? (
+            <div className="card muted p-10 text-center">No core data available for {format}.</div>
+          ) : (
+            <>
+              <p className="muted mb-2 text-xs">Most-used pairings on the {format} ladder — the partner each top Pokémon is run with most. Click either to view its set.</p>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                {cores.map(({ a, b }, i) => (
+                  <div key={i} className="card flex items-center gap-2 p-3">
+                    <span className="muted w-5 text-right text-xs tabular-nums">{i + 1}</span>
+                    <CoreMon entry={a} onClick={() => setSelected(a)} />
+                    <span className="muted text-xs font-bold">+</span>
+                    <CoreMon entry={b} onClick={() => setSelected(b)} />
+                  </div>
+                ))}
+              </div>
+            </>
+          )
+        ) : roleLoading ? (
+          <div className="card muted p-10 text-center">Analyzing roles across the top of the meta…</div>
         ) : shown.length === 0 ? (
-          <div className="card muted p-10 text-center">No Pokémon match “{query}” in {format}.</div>
+          <div className="card muted p-10 text-center">
+            {roleFilter ? `No top-meta Pokémon match that role in ${format}.` : `No Pokémon match “${query}” in ${format}.`}
+          </div>
         ) : (
           <>
             <p className="muted mb-2 flex items-center gap-1.5 text-xs">
               {usageAvailable && <TrendingUp size={13} />}
-              {shown.length} tracked Pokémon{usageAvailable ? ", ranked by ladder usage" : ""} · click one for its most-used moves, items, abilities, spreads &amp; partners — then build a set and add it to your team.
+              {shown.length} {roleFilter ? "Pokémon with this role" : "tracked Pokémon"}{usageAvailable && !roleFilter ? ", ranked by ladder usage" : ""} · click one for its most-used moves, items, abilities, spreads &amp; partners — then build a set and add it to your team.
             </p>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {shown.map((e) => (
@@ -185,6 +265,15 @@ export default function MetaPage() {
         <div className="surface fixed bottom-5 left-1/2 -translate-x-1/2 rounded-lg px-4 py-2 text-sm shadow-xl">{toast}</div>
       )}
     </AppShell>
+  );
+}
+
+function CoreMon({ entry, onClick }: { entry: MetaIndexEntry; onClick: () => void }) {
+  return (
+    <button className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 text-left transition-colors hover:bg-[var(--panel)]" onClick={onClick} title={`View ${entry.name}`}>
+      <MetaSprite name={entry.name} src={entry.sprite} size={40} className="shrink-0" />
+      <span className="min-w-0 truncate text-sm font-semibold">{entry.name}</span>
+    </button>
   );
 }
 
