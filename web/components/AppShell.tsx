@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, Calculator, Gauge, Repeat, TrendingUp } from "lucide-react";
+import { Boxes, Calculator, Gauge, Repeat, Swords, TrendingUp } from "lucide-react";
 import { AuthButton } from "./AuthButton";
 import { SCALES, useScale } from "./scale";
 import { THEMES, useTheme } from "./theme";
@@ -11,6 +11,7 @@ const NAV = [
   { href: "/", label: "Team Builder", icon: Boxes },
   { href: "/meta", label: "Meta", icon: TrendingUp },
   { href: "/speed", label: "Speed Tiers", icon: Gauge },
+  { href: "/preview", label: "Team Preview", icon: Swords },
   { href: "/trade", label: "Trade", icon: Repeat },
   { href: "/calc", label: "Damage Calc", icon: Calculator },
 ];
