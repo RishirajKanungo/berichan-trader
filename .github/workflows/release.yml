@@ -102,10 +102,15 @@ jobs:
             unsigned open-source apps.
 
             ### If Windows blocks it (Smart App Control)
-            Some Windows 11 PCs have **Smart App Control**, which blocks unsigned apps
-            with no "Run anyway" option. If you hit that, run it from source instead —
-            no `.exe` needed:
-            1. Download **Source code (zip)** from the Assets below and extract it.
-            2. Double-click **`Run-Berichan-Trader.bat`** in the extracted folder. The
-               first run installs everything automatically (needs Python; the launcher
-               opens the download page if it's missing). After that it opens instantly.
+            Some Windows 11 PCs have **Smart App Control (SAC)**, which blocks unsigned
+            `.exe` AND scripts (`.bat`/`.ps1`) with no "Run anyway" — there is no
+            double-click workaround for an unsigned app under SAC. You can still run it,
+            because SAC allows commands typed into trusted PowerShell:
+            1. Install Python (tick "Add Python to PATH").
+            2. Download **Source code (zip)** below and extract it.
+            3. In the extracted folder: Shift+right-click -> "Open PowerShell window
+               here", then run:
+               `pip install -r requirements.txt` (once), then `python -m berichan.gui`.
+
+            The only true click-to-run fixes under SAC are code-signing or turning SAC
+            off (a permanent change). See the README for details.

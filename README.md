@@ -29,24 +29,42 @@ mainline games) with almost no manual work.
 Nothing is installed on your system. The app only saves your settings and teams to
 `%APPDATA%\BerichanCrossTransfer\`. To uninstall, just delete the `.exe`.
 
-### If Windows blocks the .exe (Smart App Control)
+### If Windows blocks it (Smart App Control)
 
-Some Windows 11 PCs have **Smart App Control** turned on. Unlike the SmartScreen
-warning above, it **blocks unsigned apps with no “Run anyway” option** (you may see
-*“An Application Control policy has blocked this file.”*). If that happens, the
-easiest fix is to **run from source with one click** — no `.exe` needed:
+Some Windows 11 PCs have **Smart App Control (SAC)** turned on. Unlike the
+SmartScreen warning above, SAC **blocks unsigned apps and scripts with no “Run
+anyway” option** — that includes `.exe`, `.bat`, and `.ps1` files (you may see
+*“An Application Control policy has blocked this file”* or a *dangerous file
+extension* message). There is no double-click workaround for an unsigned app under
+SAC; that's what SAC is designed to do.
 
-1. On this repo's main page, click **Code → Download ZIP**, then extract it.
-2. Double-click **`Run-Berichan-Trader.bat`** in the extracted folder.
-   - The first run installs everything automatically (needs
-     [Python](https://www.python.org/downloads/) — tick *“Add Python to PATH”* if
-     prompted; the launcher opens the download page for you if it's missing). This
-     takes a few minutes once.
-   - After that, double-clicking the launcher opens the app right away.
+You can still run the app, because **SAC allows commands typed into a trusted
+program** like PowerShell (and `python.exe` is trusted):
 
-(Advanced alternative: you *can* disable Smart App Control in Windows Security, but
-that switch is **permanent** — you can't turn it back on without resetting Windows —
-so running from source is the safer choice.)
+1. Install [Python](https://www.python.org/downloads/) once — tick **“Add Python
+   to PATH”** during install.
+2. On the [Releases](../../releases) page, download **Source code (zip)** and
+   extract it.
+3. Open the extracted folder, **Shift + right-click → “Open PowerShell window
+   here”**, and paste:
+   ```powershell
+   pip install -r requirements.txt
+   python -m berichan.gui
+   ```
+   The first line is a one-time install. After that, just `python -m berichan.gui`
+   opens the app.
+
+> Tip: right-clicking the downloaded **`.zip` → Properties → Unblock** *before*
+> extracting sometimes lets `Run-Berichan-Trader.bat` run by double-click under SAC,
+> but it isn't guaranteed — the PowerShell method above always works.
+
+The only ways to make a click-to-run file work under SAC are to **code-sign the
+app** or **turn SAC off** in Windows Security (a **permanent** switch — it can't be
+re-enabled without resetting Windows), so the PowerShell method is the safe choice.
+
+> **Not on Smart App Control?** If you just have the normal SmartScreen prompt, you
+> don't need any of this — and `Run-Berichan-Trader.bat` (in the source download)
+> launches the app from source with a single double-click.
 
 ---
 
