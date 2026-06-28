@@ -65,6 +65,51 @@ export function remoteSpriteUrl(name: string): string {
   return `https://championsbattledata.com/pokemon_champions_assets/pokemon/${encodeURIComponent(name)}.png`;
 }
 
+// --- usage ranking ---------------------------------------------------------
+// The ranked ladder (pokechamdb) and the roster (championsbattledata) name a
+// handful of regional/alternate forms differently, so we join on a normalized
+// key: lowercase, regional words canonicalized, alnum tokens sorted. This never
+// produces a wrong match — names that don't reconcile simply get no rank.
+
+// Form descriptors that the two sources word differently (e.g. championsbattledata
+// "Aegislash Shield Forme" vs pokechamdb "Aegislash", "Paldean Tauros Aqua Breed"
+// vs "Tauros Paldea Aqua"). Dropping these collapses both spellings to the same
+// key. Verified to introduce NO collisions on the roster — gender words are
+// deliberately NOT dropped (Meowstic / Basculegion genders are distinct mons).
+const DROP_TOKENS = new Set(["shield", "zero", "breed", "fancy", "pattern", "natural", "red", "flower"]);
+
+export function normalizeMonName(name: string): string {
+  let n = name.toLowerCase();
+  for (const [a, b] of [["alolan", "alola"], ["galarian", "galar"], ["hisuian", "hisui"], ["paldean", "paldea"]] as const) {
+    n = n.replaceAll(a, b);
+  }
+  n = n.replaceAll("jumbo", "super").replaceAll("variety", "").replaceAll("forme", "").replaceAll("form", "");
+  const toks = (n.match(/[a-z0-9]+/g) ?? []).filter((t) => !DROP_TOKENS.has(t));
+  return toks.sort().join("");
+}
+
+const usageCache = new Map<MetaFormat, Map<string, number>>();
+
+/** Map of normalized Pokémon name -> 1-based usage rank for the format (lower = more used). */
+export async function getUsageRanks(format: MetaFormat): Promise<Map<string, number>> {
+  const hit = usageCache.get(format);
+  if (hit) return hit;
+  const ranks = new Map<string, number>();
+  try {
+    const r = await fetch(`/api/meta/usage?format=${format}`);
+    const d = await r.json();
+    const list: { name: string }[] = Array.isArray(d?.ranks) ? d.ranks : [];
+    list.forEach((row, i) => {
+      const key = normalizeMonName(row.name);
+      if (!ranks.has(key)) ranks.set(key, i + 1);
+    });
+  } catch {
+    /* fail soft — caller falls back to BST sort */
+  }
+  usageCache.set(format, ranks);
+  return ranks;
+}
+
 export interface Recommended {
   moves: string[];
   item: string;

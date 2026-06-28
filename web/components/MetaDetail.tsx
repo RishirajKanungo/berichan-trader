@@ -19,9 +19,10 @@ const TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Pois
 const emptySpread = (): Record<StatLabel, number> => ({ HP: 0, Atk: 0, Def: 0, SpA: 0, SpD: 0, Spe: 0 });
 
 export function MetaDetail({
-  entry, format, setFormat, onAdd, canAdd, onSelectMon, onClose,
+  entry, rank, format, setFormat, onAdd, canAdd, onSelectMon, onClose,
 }: {
   entry: MetaIndexEntry;
+  rank: number | null;
   format: MetaFormat;
   setFormat: (f: MetaFormat) => void;
   onAdd: (mon: Pokemon) => void;
@@ -112,7 +113,14 @@ export function MetaDetail({
         <div className="flex items-center gap-3">
           <MetaSprite name={entry.name} size={40} />
           <div>
-            <div className="leading-tight">{speciesName}</div>
+            <div className="flex items-center gap-2 leading-tight">
+              {speciesName}
+              {rank != null && (
+                <span className="accent-text rounded-md px-1.5 py-0.5 text-xs font-black tabular-nums" style={{ background: "color-mix(in srgb, var(--accent) 16%, transparent)" }} title="Usage rank">
+                  #{rank} usage
+                </span>
+              )}
+            </div>
             <div className="muted flex items-center gap-1.5 text-xs font-normal">
               {entry.types.map((t) => (
                 // eslint-disable-next-line @next/next/no-img-element
