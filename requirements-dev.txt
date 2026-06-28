@@ -1,0 +1,4 @@
+# Development & build tooling (not needed to run the app).
+-r requirements.txt
+pyinstaller>=6.0
+pytest>=8.0

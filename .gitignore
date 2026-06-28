@@ -1,10 +1,25 @@
+# Secrets / local config
 .env
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+.ruff_cache/
 *.egg-info/
-dist/
+
+# Build / packaging output
 build/
+dist/
+*.spec.bak
+
+# Virtual environments
 .venv/
 venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

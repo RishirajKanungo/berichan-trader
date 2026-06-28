@@ -1,5 +1,0 @@
-$env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH","User")
-$env:PYTHONIOENCODING = "utf-8"
-chcp 65001 > $null
-Set-Location $PSScriptRoot
-python -m src.main team.txt

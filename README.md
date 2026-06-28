@@ -1,170 +1,101 @@
 # Berichan Auto Cross-Transfer
 
-Automates trading a full Pokemon Showdown team through the [BerichanDev Twitch channel](https://www.twitch.tv/berichandev).
+A Windows desktop app that builds Pokémon teams and **auto-trades them into your
+Switch games** through the [BerichanDev Twitch channel](https://www.twitch.tv/berichandev) —
+so you can move a whole team from Pokémon Champions into Scarlet/Violet (and other
+mainline games) with almost no manual work.
 
 **What it does:**
-1. You paste your Showdown team export.
-2. The script posts each Pokemon's block to the Twitch chat and whispers the trade code to BerichanBot automatically.
-3. It monitors the chat and beeps + prints a banner when it's your turn.
-4. You do the actual trade on your Switch. Press ENTER when done.
-5. It waits the cooldown and moves to the next Pokemon.
+1. Build a team in the app (or import a Pokémon Showdown export).
+2. Click **Start** — the app posts each Pokémon to Berichan's Twitch chat and
+   whispers your trade code automatically.
+3. When a trade is ready, it plays a sound and lights up a **Trade Done** button.
+4. You do the actual trade on your Switch, click **Trade Done**, and it moves on
+   to the next Pokémon.
 
 ---
 
-## Setup
+## Download & install
 
-### 1. Install Python 3.11+
-Download from [python.org](https://www.python.org/downloads/). During install, check **"Add Python to PATH"**.
+1. Go to the [**Releases**](../../releases) page.
+2. Download **`BerichanCrossTransfer.exe`** from the latest release.
+3. Double-click it. **No installer, no Python, no admin rights** — it's a single file.
 
-### 2. Install dependencies
-```
-pip install -r requirements.txt
-```
+> **First-run warning:** Windows SmartScreen may say *“Windows protected your PC.”*
+> This is normal for a free, unsigned app. Click **More info → Run anyway**.
+> (See [Is this safe?](#is-this-safe) — the app is open source and built
+> automatically from this repo.)
 
-### 3. Create a Twitch Developer App
-1. Go to [dev.twitch.tv/console](https://dev.twitch.tv/console) → **Register Your Application**
-2. Set **OAuth Redirect URL** to `http://localhost:3000`
-3. Copy the **Client ID**
-
-### 4. Run the auth setup (one time)
-```
-python setup_auth.py
-```
-This opens your browser to authorize the app and writes your token to `.env`.
-
-### 5. Edit `.env`
-```
-cp .env.example .env
-```
-Key settings to verify:
-| Variable | Default | Notes |
-|---|---|---|
-| `TRADE_CODE` | `24932000` | Your 8-digit Link Trade code in Scarlet/Violet |
-| `BOT_USERNAME` | `BerichanBot` | Verify on the live stream — may be `Bot_RocketGrunt` |
-| `INTER_TRADE_DELAY` | `120` | Seconds between Pokemon (2 min is safe) |
+Nothing is installed on your system. The app only saves your settings and teams to
+`%APPDATA%\BerichanCrossTransfer\`. To uninstall, just delete the `.exe`.
 
 ---
 
-## Usage
+## First-time setup (built-in wizard)
 
-### Desktop app (recommended)
+The first time you open the app, a short **setup wizard** walks you through
+connecting your Twitch account. You'll need a free Twitch "Client ID" — the wizard
+guides you through creating one, step by step:
 
-A Windows GUI wraps the whole flow so you're not tied to the terminal:
+1. It opens the Twitch Developer Console for you.
+2. You register a free application (the wizard shows the exact redirect URL to
+   paste, with a copy button).
+3. You paste the **Client ID** into the wizard.
+4. Click **Connect Twitch** to authorize — your token is captured automatically.
 
-```
-python -m src.gui
-```
-or double-run `run_gui.ps1`.
-
-The app has a left sidebar with three sections:
-
-- **Team** — the built-in team builder, modeled on Showdown's. **+ Add Pokémon**
-  opens a searchable picker of the **legal Pokémon Champions roster** (with
-  sprites); choosing one opens an editor that constrains abilities and the four
-  move slots to that species' real movepool. Stats use the Champions **Stat Point
-  (SP)** system (66 total, 32 per stat — no IVs) with **two editing modes**: a
-  Showdown-style **slider** view and an interactive **pie/radial** view, both
-  showing live Level-50 stats. You can also **Import from Showdown**. Edit /
-  reorder / remove Pokémon as cards, **Save**/**Load** named teams, and **Export**
-  back to Showdown.
-- **Trade** — pick the game, review the team, **Start / Stop** (the window stays
-  responsive during the wait), and click the big **Trade Done** button when each
-  trade finishes. A configurable **ready sound** (three soft built-in chimes or your
-  own `.wav`/`.mp3`, with volume + test) replaces the old harsh triple beep.
-- **Settings** — Twitch username / Client ID / token (with **Re-authenticate…** and
-  **Check connection**), channel / bot / trade code, all timing values, the ready
-  sound, and **Appearance** (theme).
-
-**First run** launches a short **setup wizard** that walks you through creating a
-Twitch Developer App (Client ID), copying the redirect URL, and authorizing — no
-manual `.env` editing. It's re-runnable from Settings.
-
-**Themes** (Settings → Appearance): **Windows** (native, default), **Material**
-(flat dark), and **Glass** (frosted dark). Switching is live and reliable.
-
-Settings are saved to `%APPDATA%\BerichanCrossTransfer\settings.json` (migrated
-automatically from your existing `.env` on first launch). **Your Twitch token is
-encrypted at rest** using the Windows Data Protection API (DPAPI), tied to your
-Windows account — a copied settings file can't be decrypted by anyone else.
-
-### Build a standalone .exe
-
-To share the app with people who don't have Python:
-
-```
-pip install pyinstaller
-pyinstaller berichan.spec
-```
-
-The executable lands in `dist/`. The build bundles the sound, Pokédex and sprite
-assets and **excludes `.env`**, so no credentials ship inside the binary — each
-user runs the setup wizard and their token stays encrypted on their own machine.
-
-### Pokédex data (teambuilder)
-
-The teambuilder reads a bundled, offline dataset built from Serebii's Pokémon
-Champions Pokédex — `assets/data/champions.json` (roster, types, base stats,
-abilities, movepools) and `assets/sprites/*.png`. These are committed, so the app
-never hits the network. To regenerate after a game update:
-
-```
-python tools/gen_pokedex.py    # rebuild champions.json
-python tools/gen_sprites.py    # rebuild sprites
-```
-
-Stats use the Champions **Stat Point** system and are converted to standard EVs
-(`EV = SP × 8`, capped 252; IVs always perfect) when the set is sent to Berichan,
-so the traded Pokémon matches what you built.
-
-### Terminal (CLI)
-
-**Interactive (paste team):**
-```
-python -m src.main
-```
-
-**From a file:**
-```
-python -m src.main team.txt
-```
-
-**Override trade code for this run:**
-```
-python -m src.main --code 87654321
-```
-
-When it's your turn you'll hear 3 beeps and see:
-```
-══════════════════════════════════════════════════════════════
-  TRADE READY: PENATRATOR
-  Use code   : 24932000  on your Switch
-  Search for the trade NOW, then press ENTER when done.
-══════════════════════════════════════════════════════════════
-```
+That's it. Your token is **encrypted on your own PC** (Windows DPAPI) and never
+leaves it. You can re-run the wizard or change anything later under **Settings**.
 
 ---
 
-## Showdown format example
+## Using the app
 
-Paste the export exactly as Pokemon Showdown generates it:
+The app has three sections in the left sidebar:
 
-```
-PENATRATOR (Excadrill) (M) @ No Item
-Ability: Sand Rush
-Level: 50
-Shiny: Yes
-Tera Type: Ground
-EVs: 4 HP / 252 Atk / 252 Spe
-Adamant Nature
-- Rock Slide
-- Protect
-- High Horsepower
-- Iron Head
+### 🧩 Team
+The built-in team builder, modeled on Pokémon Showdown's:
+- **+ Add Pokémon** opens a searchable picker of the legal **Pokémon Champions**
+  roster (with sprites). Picking one opens an editor that limits abilities and
+  moves to that species' real movepool, with item effects, ability descriptions,
+  and type / Physical-Special-Status icons.
+- Stats use the Champions **Stat Point** system (66 total, 32 per stat) with two
+  editing modes — a **slider** view and an interactive **pie/radial** view — both
+  showing live Level-50 stats. These are converted to legal in-game EVs
+  automatically when traded.
+- Save / load named teams, reorder Pokémon, or **Import from Showdown**.
 
-Grimmsnarl (M) @ Light Clay
-Ability: Prankster
-...
-```
+### 🔄 Trade
+- Pick your target game, review the team, and hit **Start**.
+- The window stays responsive while it waits. When a trade is ready you'll hear a
+  sound and the **Trade Done** button lights up — do the trade on your Switch,
+  then click it to continue.
+
+### ⚙ Settings
+- Twitch account (re-authenticate, check connection), channel / bot / trade code,
+  and all timing values.
+- **Ready sound** — three soft built-in chimes or your own `.wav`/`.mp3`, with a
+  volume slider and a test button.
+- **Appearance** — themes: **Windows** (native, default), **Material**, or
+  **Glass** (frosted dark).
+
+---
+
+## Is this safe?
+
+Yes — and you don't have to take our word for it:
+
+- The released `.exe` is **built automatically by GitHub Actions from this public
+  source** (see the **Actions** tab), so the download provably matches the code
+  you can read here. It isn't uploaded by hand.
+- It's **fully open source** — inspect it or build it yourself.
+- **No credentials are bundled.** You sign in to Twitch yourself on first run;
+  your token is encrypted with Windows DPAPI and stored only on your PC.
+- Every release includes a **SHA-256 checksum**. To verify your download, run in
+  PowerShell:
+  ```powershell
+  Get-FileHash .\BerichanCrossTransfer.exe -Algorithm SHA256
+  ```
+  The value must match the `.sha256` file attached to the release.
 
 ---
 
@@ -172,13 +103,52 @@ Ability: Prankster
 
 | Problem | Fix |
 |---|---|
-| Whisper not sending | Ensure your Twitch account has phone verification enabled |
-| Bot username wrong | Check the live stream — the bot may be `Bot_RocketGrunt` instead of `BerichanBot`. Update `BOT_USERNAME` in `.env` |
-| No queue confirmation | The bot may be offline. The script will still wait for "Initializing trade" |
-| Token expired | Re-run `python setup_auth.py` |
+| SmartScreen blocks the app | Click **More info → Run anyway** (normal for unsigned apps). |
+| "Token expired" / can't connect | Open **Settings → Re-authenticate**. |
+| Whisper not sending | Your Twitch account needs **phone verification** enabled. |
+| Wrong bot / no queue confirmation | Confirm the bot username in **Settings** (check the live stream); the bot may be offline. |
+| Trade set too long | Shorten nicknames/moves — Twitch limits a chat message to 500 characters (the editor shows a live count). |
+
+---
+
+## Building from source (for developers)
+
+The app is a Python / PySide6 project. To run or build it yourself:
+
+```bash
+pip install -r requirements.txt
+python -m berichan.gui          # run the desktop app
+python -m pytest                # run the tests
+```
+
+Build the distributable executable:
+
+```bash
+pip install -r requirements-dev.txt
+pyinstaller berichan.spec        # -> dist/BerichanCrossTransfer.exe
+```
+
+The teambuilder data (Champions roster, items, moves, abilities, sprites, icons,
+and competitive meta) is bundled and committed under `assets/`. Regenerate it with
+the scripts in `tools/` (e.g. `python tools/gen_pokedex.py`).
+
+### Releasing
+
+Releases are automated. Push a version tag and GitHub Actions builds the exe, runs
+the tests, smoke-tests that it launches, computes the SHA-256, and publishes
+everything to a GitHub Release:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ---
 
 ## Phase 2 — Controller automation (planned)
 
-The long-term goal is to automate the Switch button presses for the Link Trade itself so you're fully hands-off. The best approach on Windows is a **Raspberry Pi Zero running [nxbt](https://github.com/Brikwerk/nxbt)** (emulates a Pro Controller over Bluetooth), controlled over the local network by this script. Arduino/Teensy USB controller emulators are an alternative. This is not yet implemented.
+The long-term goal is to automate the Switch button presses for the Link Trade
+itself so the process is fully hands-off. The most promising approach on Windows
+is a **Raspberry Pi Zero running [nxbt](https://github.com/Brikwerk/nxbt)**
+(emulating a Pro Controller over Bluetooth), driven by this app over the local
+network. Not yet implemented.

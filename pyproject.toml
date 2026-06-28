@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "berichan-cross-transfer"
+version = "1.0.0"
+description = "Desktop team builder + Twitch trade automation for Pokémon Champions, trading into mainline games via the BerichanDev channel."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Rishiraj Kanungo" }]
+keywords = ["pokemon", "champions", "twitch", "teambuilder", "trading", "pyside6"]
+dependencies = [
+    "aiohttp>=3.9.0",
+    "python-dotenv>=1.0.0",
+    "colorama>=0.4.6",
+    "PySide6>=6.6",
+    "qasync>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pyinstaller>=6.0", "pytest>=8.0"]
+
+[project.gui-scripts]
+berichan = "berichan.gui.app:main"
+
+[tool.setuptools.packages.find]
+include = ["berichan*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
