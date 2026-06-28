@@ -100,8 +100,16 @@ export async function getUsageRanks(format: MetaFormat): Promise<Map<string, num
     const d = await r.json();
     const list: { name: string }[] = Array.isArray(d?.ranks) ? d.ranks : [];
     list.forEach((row, i) => {
+      const rank = i + 1;
       const key = normalizeMonName(row.name);
-      if (!ranks.has(key)) ranks.set(key, i + 1);
+      if (!ranks.has(key)) ranks.set(key, rank);
+      // pokechamdb names the default gender bare (e.g. "Basculegion"), while the
+      // roster spells it out ("Basculegion Male"). Register a "+male" alias so the
+      // bare entry still matches — harmless for non-gendered species.
+      if (!/\b(male|female)\b/i.test(row.name)) {
+        const maleKey = normalizeMonName(`${row.name} male`);
+        if (!ranks.has(maleKey)) ranks.set(maleKey, rank);
+      }
     });
   } catch {
     /* fail soft — caller falls back to BST sort */
