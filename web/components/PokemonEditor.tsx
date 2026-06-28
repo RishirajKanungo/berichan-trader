@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   abilityDesc, allItems, describeItem, getMove, itemIconUrl, moveSummary,
 } from "@/lib/data";
+import { getMeta, recommended, type MetaData, type MetaFormat } from "@/lib/meta";
 import { categoryIconUrl, spriteUrl, typeIconUrl } from "@/lib/assets";
 import {
-  NATURE_NAMES, STAT_KEYS, STAT_LABELS, evToSp, spSpreadToEvs,
+  NATURE_NAMES, STAT_KEYS, STAT_LABELS, STAT_ORDER, evToSp, spSpreadToEvs,
   type StatLabel,
 } from "@/lib/stats";
 import { TWITCH_MAX_CHAT_LENGTH, chatMessage, newPokemon, syncLines } from "@/lib/teamParser";
@@ -44,6 +45,27 @@ export function PokemonEditor({
 
   const itemNames = useMemo(() => allItems().map((i) => i.name), []);
   const speciesName = species?.name ?? init.species;
+
+  // Competitive usage data (cached proxy). Loads once per species+format.
+  const [metaFormat, setMetaFormat] = useState<MetaFormat>("Doubles");
+  const [meta, setMeta] = useState<MetaData | null>(null);
+  useEffect(() => {
+    if (!species) return;
+    setMeta(null);
+    let active = true;
+    getMeta(species.id, metaFormat).then((m) => { if (active) setMeta(m); });
+    return () => { active = false; };
+  }, [species, metaFormat]);
+
+  const applyRecommended = () => {
+    if (!meta?.available) return;
+    const rec = recommended(meta);
+    if (rec.ability) setAbility(rec.ability);
+    if (rec.item) setItem(rec.item);
+    if (rec.nature) setNature(rec.nature);
+    if (rec.spread) setSp({ ...rec.spread });
+    setMoves([0, 1, 2, 3].map((i) => rec.moves[i] ?? ""));
+  };
 
   const build = (): Pokemon =>
     syncLines(
@@ -101,6 +123,41 @@ export function PokemonEditor({
               {"   ·   BST "}{STAT_KEYS.reduce((s, k) => s + (species.baseStats[k] || 0), 0)}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Recommended (meta) — what people actually run, from cached usage data. */}
+      {species && (
+        <div className="card mb-4 p-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm font-semibold">Recommended (meta)</span>
+            <div className="flex items-center gap-2">
+              <select
+                className="input w-auto py-1 text-xs"
+                value={metaFormat}
+                onChange={(e) => setMetaFormat(e.target.value as MetaFormat)}
+              >
+                <option value="Doubles">Doubles</option>
+                <option value="Singles">Singles</option>
+              </select>
+              <button className="btn btn-primary" onClick={applyRecommended} disabled={!meta?.available}>Apply set</button>
+            </div>
+          </div>
+          {meta === null ? (
+            <p className="muted text-xs">Loading usage data…</p>
+          ) : !meta.available ? (
+            <p className="muted text-xs">No usage data for this Pokémon in {metaFormat}.</p>
+          ) : (
+            <div className="muted space-y-0.5 text-xs">
+              <div><b>Moves:</b> {meta.moves.slice(0, 4).map(([n, p]) => `${n} ${Math.round(p)}%`).join(" · ") || "—"}</div>
+              {meta.items[0] && <div><b>Item:</b> {meta.items.slice(0, 2).map(([n, p]) => `${n} ${Math.round(p)}%`).join(" · ")}</div>}
+              {meta.abilities[0] && <div><b>Ability:</b> {meta.abilities.slice(0, 2).map(([n, p]) => `${n} ${Math.round(p)}%`).join(" · ")}</div>}
+              {meta.natures[0] && <div><b>Nature:</b> {meta.natures.slice(0, 2).map(([n, p]) => `${n} ${Math.round(p)}%`).join(" · ")}</div>}
+              {meta.spreads[0] && (
+                <div><b>Spread:</b> {STAT_ORDER.map((s) => meta.spreads[0][0][s] ?? 0).join("/")} SP ({Math.round(meta.spreads[0][1])}%)</div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
