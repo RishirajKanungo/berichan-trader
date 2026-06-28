@@ -6,8 +6,9 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/auth";
 import { useTeam } from "@/components/team";
-import { getSpecies } from "@/lib/data";
+import { allMoveNames, getSpecies } from "@/lib/data";
 import { GAMES } from "@/lib/games";
+import { syncLines } from "@/lib/teamParser";
 import { canLearnInGame, gameKey, loadLegality, speciesInGame, teamIssues } from "@/lib/legality";
 import { playReady } from "@/lib/sound";
 import { displayName } from "@/lib/teamParser";
@@ -20,7 +21,7 @@ const LOG_COLOR: Record<LogLevel, string> = {
 
 export default function TradePage() {
   const { authEnabled, signedIn, user, accessToken } = useAuth();
-  const { team } = useTeam();
+  const { team, setTeam } = useTeam();
   const engineRef = useRef<TradeEngine | null>(null);
 
   const [settings, setSettings] = useState<TradeSettings>(() => loadSettings());
@@ -44,6 +45,27 @@ export default function TradePage() {
   const issues = useMemo(() => teamIssues(team, gkey), [team, gkey]);
   const gameValidated = gkey !== null; // SwSh / Legends Arceus aren't in the dataset yet
   const currentGameLabel = GAMES.find((g) => g.command === settings.gameCommand)?.label ?? "the game";
+
+  // Legal replacement moves for a species in the selected game (excludes ones it
+  // already has), so the user can fix an illegal move right on this page.
+  const legalOptionsFor = (speciesName: string, current: string[]): string[] => {
+    if (!gkey) return [];
+    return allMoveNames().filter((n) => canLearnInGame(speciesName, n, gkey) && !current.includes(n));
+  };
+
+  const replaceMove = (monIndex: number, slot: number, newMove: string) => {
+    setTeam((prev) =>
+      prev.map((m, i) => {
+        if (i !== monIndex) return m;
+        const moves = [...m.moves];
+        if (newMove) moves[slot] = newMove;
+        else moves.splice(slot, 1);
+        return syncLines({ ...m, moves });
+      }),
+    );
+  };
+
+  const removeMon = (monIndex: number) => setTeam((prev) => prev.filter((_, i) => i !== monIndex));
 
   const canTrade = useMemo(
     () => authEnabled && signedIn && !!accessToken && !!user?.login,
@@ -152,28 +174,47 @@ export default function TradePage() {
               {team.length === 0 ? (
                 <p className="muted text-sm">No team loaded. Go to the Team Builder to build or load one.</p>
               ) : (
-                <ol className="list-decimal space-y-1 pl-5 text-sm">
+                <ol className="list-decimal space-y-2 pl-5 text-sm">
                   {team.map((m, i) => {
                     const inRoster = !!getSpecies(m.species);
-                    let problem = "";
-                    if (!inRoster) {
-                      problem = "not in the Champions roster";
-                    } else if (gameValidated && gkey) {
-                      if (!speciesInGame(m.species, gkey)) {
-                        problem = `not available in ${currentGameLabel}`;
-                      } else {
-                        const bad = m.moves.filter((mv) => mv && !canLearnInGame(m.species, mv, gkey));
-                        if (bad.length) problem = `can't learn ${bad.join(", ")}`;
-                      }
-                    }
+                    const notInGame = inRoster && gameValidated && gkey ? !speciesInGame(m.species, gkey) : false;
+                    const badSlots = inRoster && gameValidated && gkey && !notInGame
+                      ? m.moves.map((mv, slot) => ({ mv, slot })).filter((x) => x.mv && !canLearnInGame(m.species, x.mv, gkey))
+                      : [];
+                    const ok = inRoster && !notInGame && badSlots.length === 0;
+                    const options = badSlots.length ? legalOptionsFor(m.species, m.moves) : [];
                     return (
                       <li key={i}>
                         <span className="font-medium">{displayName(m)}</span>{" "}
-                        {problem ? (
-                          <span style={{ color: "#e74c3c" }}>⚠ {problem}</span>
-                        ) : (
+                        {ok ? (
                           <span style={{ color: "#2ecc71" }}>✓ legal{gameValidated ? ` for ${currentGameLabel}` : ""}</span>
+                        ) : !inRoster ? (
+                          <span style={{ color: "#e74c3c" }}>⚠ not in the Champions roster</span>
+                        ) : notInGame ? (
+                          <span style={{ color: "#e74c3c" }}>
+                            ⚠ not available in {currentGameLabel}{" "}
+                            <button className="underline" onClick={() => removeMon(i)}>remove</button>
+                          </span>
+                        ) : (
+                          <span style={{ color: "#e74c3c" }}>⚠ illegal move{badSlots.length > 1 ? "s" : ""} for {currentGameLabel}</span>
                         )}
+
+                        {/* Inline fix: swap each illegal move for a legal one. */}
+                        {badSlots.map(({ mv, slot }) => (
+                          <div key={slot} className="mt-1 flex flex-wrap items-center gap-2 pl-1">
+                            <span style={{ color: "#e74c3c" }}>✕ {mv}</span>
+                            <span className="muted">→</span>
+                            <select
+                              className="input w-auto py-1 text-xs"
+                              value=""
+                              onChange={(e) => { if (e.target.value) replaceMove(i, slot, e.target.value === "__remove__" ? "" : e.target.value); }}
+                            >
+                              <option value="">Replace with a legal move…</option>
+                              {options.map((n) => <option key={n} value={n}>{n}</option>)}
+                              <option value="__remove__">(remove this move)</option>
+                            </select>
+                          </div>
+                        ))}
                       </li>
                     );
                   })}

@@ -94,6 +94,9 @@ export function itemIconUrl(name: string): string | null {
 export function getMove(name: string): MoveData | undefined {
   return name ? _moves.get(name.trim().toLowerCase()) : undefined;
 }
+export function allMoveNames(): string[] {
+  return [...new Set([..._moves.values()].map((m) => m.name))].sort();
+}
 export function moveSummary(name: string): string {
   const m = getMove(name);
   if (!m) return "";

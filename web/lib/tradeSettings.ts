@@ -25,7 +25,7 @@ export const DEFAULT_SETTINGS: TradeSettings = {
   whisperDelay: 2.0,
   queueTimeout: 30,
   tradeTimeout: 600,
-  cooldown: 120,
+  cooldown: 90,
   sound: true,
 };
 
@@ -33,7 +33,10 @@ export function loadSettings(): TradeSettings {
   if (typeof window === "undefined") return { ...DEFAULT_SETTINGS };
   try {
     const raw = window.localStorage.getItem(KEY);
-    return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : { ...DEFAULT_SETTINGS };
+    if (!raw) return { ...DEFAULT_SETTINGS };
+    const saved = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (saved.cooldown === 120) saved.cooldown = 90; // migrate the old default
+    return saved;
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
