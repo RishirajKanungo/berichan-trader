@@ -30,15 +30,17 @@ export interface SpeedCol {
 
 const scarf = (v: number) => Math.floor(v * 1.5);
 
-// The tiers requested, ordered slow → fast.
-export const SPEED_COLS: SpeedCol[] = [
-  { key: "base", label: "Base", full: "Base speed stat", calc: (b) => b },
-  { key: "min", label: "−Nat 0", full: "Minus-speed nature, 0 SP (Trick Room min)", calc: (b) => speedStat(b, 0, "minus") },
-  { key: "neut0", label: "Neut 0", full: "Neutral nature, 0 SP (uninvested)", calc: (b) => speedStat(b, 0, "neutral") },
-  { key: "neutMax", label: "Neut +32", full: "Neutral nature, 32 SP (max neutral)", calc: (b) => speedStat(b, 32, "neutral") },
-  { key: "max", label: "Max", full: "Plus-speed nature, 32 SP (max speed)", calc: (b) => speedStat(b, 32, "plus") },
-  { key: "neutScarf", label: "Neut +32 Scarf", full: "Neutral nature, 32 SP + Choice Scarf", calc: (b) => scarf(speedStat(b, 32, "neutral")) },
-  { key: "maxScarf", label: "Max Scarf", full: "Plus-speed nature, 32 SP + Choice Scarf", calc: (b) => scarf(speedStat(b, 32, "plus")) },
+// The tiers requested, ordered slow → fast. `full` is a one-line title; `help`
+// is the hover-tooltip explanation (concise, with an example) so the abbreviated
+// headers are never ambiguous.
+export const SPEED_COLS: (SpeedCol & { help: string })[] = [
+  { key: "base", label: "Base", full: "Base Speed stat", help: "The species' raw base Speed — before level, nature or investment. (Garchomp = 102.)", calc: (b) => b },
+  { key: "min", label: "−Nat 0", full: "Minus nature, 0 SP", help: "Slowest build: a Speed‑lowering nature and no investment. Best under Trick Room, where the slowest mon moves first.", calc: (b) => speedStat(b, 0, "minus") },
+  { key: "neut0", label: "Neut 0", full: "Neutral, uninvested", help: "Neutral nature with 0 Speed points — the Speed you keep if you invest everything elsewhere.", calc: (b) => speedStat(b, 0, "neutral") },
+  { key: "neutMax", label: "Neut +32", full: "Neutral, max invest", help: "Neutral nature with full Speed investment (32 SP / 252 EVs).", calc: (b) => speedStat(b, 32, "neutral") },
+  { key: "max", label: "Max", full: "Max Speed", help: "Fastest standard build: a Speed‑boosting nature (Jolly/Timid) + full investment. (Garchomp hits 169.)", calc: (b) => speedStat(b, 32, "plus") },
+  { key: "neutScarf", label: "Neut +32 Scarf", full: "Neutral + Choice Scarf", help: "Neutral nature, full Speed investment, holding a Choice Scarf (×1.5).", calc: (b) => scarf(speedStat(b, 32, "neutral")) },
+  { key: "maxScarf", label: "Max Scarf", full: "Max + Choice Scarf", help: "Speed‑boosting nature, full investment, Choice Scarf (×1.5) — the fastest a Pokémon can reach.", calc: (b) => scarf(speedStat(b, 32, "plus")) },
 ];
 
 export const DEFAULT_SORT_COL = "max";

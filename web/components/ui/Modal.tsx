@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -30,9 +31,13 @@ export function Modal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  // Portal to <body> so the modal is never clipped or mis-positioned by an
+  // ancestor that establishes a containing block (e.g. the page-transition
+  // wrapper's transform). Modals only open via client interaction, so document
+  // is always present here; the guard just keeps SSR safe.
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       className="anim-fade fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.55)" }}
@@ -57,6 +62,7 @@ export function Modal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

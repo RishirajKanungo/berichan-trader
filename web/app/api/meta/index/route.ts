@@ -92,7 +92,11 @@ export async function GET() {
 
       return [base, ...megas];
     });
-    return NextResponse.json({ pokemon }, {
+    // A few base entries list the same Mega twice — keep one per slug so React
+    // keys stay unique (duplicate keys break per-row style updates downstream).
+    const seenSlugs = new Set<string>();
+    const deduped = pokemon.filter((p) => (p.slug && !seenSlugs.has(p.slug) ? (seenSlugs.add(p.slug), true) : false));
+    return NextResponse.json({ pokemon: deduped }, {
       headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" },
     });
   } catch {

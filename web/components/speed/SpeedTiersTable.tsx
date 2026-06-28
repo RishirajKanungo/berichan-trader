@@ -118,12 +118,20 @@ export function SpeedTiersTable({
                 {SPEED_COLS.map((c) => (
                   <th
                     key={c.key}
-                    className="cursor-pointer select-none px-2 py-2 text-right font-semibold whitespace-nowrap"
-                    title={`${c.full} — click to sort`}
+                    className="group relative cursor-pointer select-none px-2 py-2 text-right font-semibold whitespace-nowrap"
+                    title={`${c.full} — ${c.help}`}
                     onClick={() => setSortCol(c.key)}
                     style={sortCol === c.key ? { color: "var(--accent)" } : undefined}
                   >
                     {c.label}{sortCol === c.key ? " ▾" : ""}
+                    {/* Hover tooltip — explains the abbreviated column with an example. */}
+                    <span
+                      className="surface pointer-events-none invisible absolute right-0 top-full z-30 mt-1 w-56 whitespace-normal rounded-lg p-2.5 text-left text-[11px] font-normal normal-case opacity-0 shadow-xl transition-opacity duration-150 group-hover:visible group-hover:opacity-100"
+                    >
+                      <b>{c.full}</b>
+                      <span className="muted mt-1 block leading-snug">{c.help}</span>
+                      <span className="muted mt-1.5 block text-[10px]">Click the header to sort by this tier.</span>
+                    </span>
                   </th>
                 ))}
               </tr>
