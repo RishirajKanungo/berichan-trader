@@ -5,6 +5,7 @@ import {
   abilityDesc, allItems, describeItem, getMove, itemIconUrl, moveSummary,
 } from "@/lib/data";
 import { getMeta, recommended, type MetaData, type MetaFormat } from "@/lib/meta";
+import { canLearn, loadLegality } from "@/lib/legality";
 import { categoryIconUrl, spriteUrl, typeIconUrl } from "@/lib/assets";
 import {
   NATURE_NAMES, STAT_KEYS, STAT_LABELS, STAT_ORDER, evToSp, spSpreadToEvs,
@@ -45,6 +46,11 @@ export function PokemonEditor({
 
   const itemNames = useMemo(() => allItems().map((i) => i.name), []);
   const speciesName = species?.name ?? init.species;
+
+  // Lazy-load legality data so we can warn about moves the species can't learn
+  // (these won't legalize when traded into the mainline games).
+  const [, forceLegality] = useState(0);
+  useEffect(() => { loadLegality().then(() => forceLegality((n) => n + 1)); }, []);
 
   // Competitive usage data (cached proxy). Loads once per species+format.
   const [metaFormat, setMetaFormat] = useState<MetaFormat>("Doubles");
@@ -242,6 +248,11 @@ export function PokemonEditor({
                       </div>
                     )}
                   </div>
+                )}
+                {mv && !canLearn(speciesName, mv) && (
+                  <p className="mt-1.5 text-xs font-medium" style={{ color: "#e74c3c" }}>
+                    ⚠ {speciesName} can&apos;t learn {mv} — this won&apos;t legalize when traded.
+                  </p>
                 )}
               </div>
             );

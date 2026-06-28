@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/auth";
 import { useTeam } from "@/components/team";
 import { GAMES } from "@/lib/games";
+import { loadLegality, teamIssues } from "@/lib/legality";
 import { playReady } from "@/lib/sound";
 import { displayName } from "@/lib/teamParser";
 import { TradeEngine, type LogLevel } from "@/lib/tradeEngine";
@@ -33,6 +34,12 @@ export default function TradePage() {
     setSettings((s) => { const next = { ...s, ...patch }; saveSettings(next); return next; });
   };
   const log = (msg: string, level: LogLevel = "info") => setLogLines((p) => [...p, { msg, level }]);
+
+  // Pre-flight legality: flag moves the team can't actually learn (these won't
+  // legalize when traded). Recomputed when the team changes / data loads.
+  const [, forceLegality] = useState(0);
+  useEffect(() => { loadLegality().then(() => forceLegality((n) => n + 1)); }, []);
+  const issues = useMemo(() => teamIssues(team), [team]);
 
   const canTrade = useMemo(
     () => authEnabled && signedIn && !!accessToken && !!user?.login,
@@ -147,10 +154,30 @@ export default function TradePage() {
               )}
             </div>
 
+            {/* Legality pre-flight */}
+            {issues.length > 0 && (
+              <div className="card mb-3 p-3" style={{ borderColor: "#e74c3c" }}>
+                <div className="mb-1 text-sm font-semibold" style={{ color: "#e74c3c" }}>
+                  ⚠ These won&apos;t legalize — fix them on the Team Builder before trading:
+                </div>
+                <ul className="muted list-disc pl-5 text-xs">
+                  {issues.map((it, i) => (
+                    <li key={i}><b>{it.pokemon}</b> can&apos;t learn <b>{it.move}</b> in the mainline games.</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Controls */}
             <div className="mb-3 flex items-center gap-2">
               {!running ? (
-                <button className="btn btn-primary" onClick={start} disabled={!team.length || !settings.tradeCode.trim()}>▶ Start Trading</button>
+                <button
+                  className="btn btn-primary"
+                  onClick={start}
+                  disabled={!team.length || !settings.tradeCode.trim() || issues.length > 0}
+                >
+                  ▶ Start Trading
+                </button>
               ) : (
                 <button className="btn" onClick={stop}>■ Stop</button>
               )}
