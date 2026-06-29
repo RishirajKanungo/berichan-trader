@@ -11,6 +11,8 @@
 
 import { NextResponse } from "next/server";
 
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36";
+
 interface PrimaryForm {
   types?: string[];
   image_path?: string;
@@ -55,7 +57,12 @@ export async function GET() {
     // The upstream index is ~15 MB — bigger than Next's 2 MB fetch-cache limit,
     // so we must opt out of fetch caching (otherwise the cache layer fails and the
     // route returns empty). Edge caching is handled by the Cache-Control header below.
-    const r = await fetch("https://championsbattledata.com/api", { cache: "no-store", signal: AbortSignal.timeout(20000) });
+    // Send a browser UA — championsbattledata's Cloudflare blocks UA-less requests.
+    const r = await fetch("https://championsbattledata.com/api", {
+      headers: { "User-Agent": UA, Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(20000),
+    });
     if (!r.ok) return NextResponse.json({ pokemon: [] });
     const data = await r.json();
     const pokemon = ((data.pokemon as IndexRecord[]) || []).flatMap((rec) => {

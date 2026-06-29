@@ -26,9 +26,8 @@ export async function getMeta(speciesId: string, format: MetaFormat): Promise<Me
   try {
     const r = await fetch(`/api/meta?mon=${encodeURIComponent(speciesId)}&format=${format}`);
     const d = await r.json();
-    const m: MetaData = d?.available
-      ? { available: true, moves: d.moves ?? [], items: d.items ?? [], abilities: d.abilities ?? [], natures: d.natures ?? [], spreads: d.spreads ?? [], teammates: d.teammates ?? [] }
-      : EMPTY;
+    if (!d?.available) return EMPTY; // don't cache misses — let reopening retry
+    const m: MetaData = { available: true, moves: d.moves ?? [], items: d.items ?? [], abilities: d.abilities ?? [], natures: d.natures ?? [], spreads: d.spreads ?? [], teammates: d.teammates ?? [] };
     cache.set(key, m);
     return m;
   } catch {

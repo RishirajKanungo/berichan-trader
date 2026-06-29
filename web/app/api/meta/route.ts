@@ -4,6 +4,8 @@
 
 import { NextResponse } from "next/server";
 
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36";
+
 interface Row {
   category?: string;
   name?: string;
@@ -49,7 +51,12 @@ export async function GET(req: Request) {
 
   try {
     const upstream = `https://championsbattledata.com/api/battle/${format}/${encodeURIComponent(mon)}?season=Current`;
-    const r = await fetch(upstream, { signal: AbortSignal.timeout(12000) });
+    // championsbattledata is behind Cloudflare, which blocks UA-less / datacenter
+    // requests (Vercel) — send a browser User-Agent like the usage route does.
+    const r = await fetch(upstream, {
+      headers: { "User-Agent": UA, Accept: "application/json" },
+      signal: AbortSignal.timeout(12000),
+    });
     if (!r.ok) return NextResponse.json({ available: false });
     const data = await r.json();
     const body = { available: true, ...parseRows(data.rows || []) };
